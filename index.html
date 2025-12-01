@@ -14,6 +14,7 @@
         margin: 0;
       }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chroma-js@2.4.2/chroma.min.js"></script>
 
     <script>
       var esriConfig = {
@@ -45,7 +46,7 @@
       zoom="5"
     >
       <arcgis-zoom slot="top-left"></arcgis-zoom>
-      <arcgis-popup></arcgis-popup>
+      <arcgis-legend slot="bottom-right" legend-style="classic"></arcgis-legend>
     </arcgis-map>
 
     <script type="module">
@@ -69,71 +70,32 @@
 
       const statsResult = await districtlayer.queryFeatures({
         where: "1=1",
-        outStatistics: [
-          {
-            statisticType: "min",
-            onStatisticField: "total_population",
-            outStatisticFieldName: "minPop",
-          },
-          {
-            statisticType: "max",
-            onStatisticField: "total_population",
-            outStatisticFieldName: "maxPop",
-          },
-          {
-            statisticType: "avg",
-            onStatisticField: "total_population",
-            outStatisticFieldName: "avgPop",
-          },
-          {
-            statisticType: "stddev",
-            onStatisticField: "total_population",
-            outStatisticFieldName: "stdDevPop",
-          },
-        ],
+        outFields: ["total_population"],
         returnGeometry: false,
       });
 
-      const minPop = statsResult.features[0].attributes.minPop;
-      const maxPop = statsResult.features[0].attributes.maxPop;
-      const avgPop = statsResult.features[0].attributes.avgPop;
-      const stdDevPop = statsResult.features[0].attributes.stdDevPop;
-
-      console.log(
-        "Min:",
-        minPop,
-        "Max:",
-        maxPop,
-        "Avg:",
-        avgPop,
-        "StdDev:",
-        stdDevPop
+      const data = statsResult.features.map(
+        (f) => f.attributes.total_population
       );
 
+      const breaks = chroma.limits(data, "e", 6);
+      console.log("Class Breaks: ", breaks);
+
+      const colors = chroma.scale(["#fafa6e", "#2A4858"]).mode("lch").colors(6);
+
       const renderer = {
-        type: "simple",
-        symbol: {
-          type: "simple-fill",
-          outline: { color: "#ffffff", width: 0.5 },
-        },
-        visualVariables: [
-          {
-            type: "color",
-            field: "total_population",
-            stops: [
-              {
-                value: `${avgPop - stdDevPop}`,
-                color: "#fdfad3",
-                label: "Lowest Population",
-              },
-              {
-                value: `${avgPop + stdDevPop}`,
-                color: "#350342",
-                label: "Highest Population",
-              },
-            ],
+        type: "class-breaks",
+        field: "total_population",
+        classBreakInfos: breaks.slice(0, -1).map((b, i) => ({
+          minValue: breaks[i],
+          maxValue: breaks[i + 1],
+          symbol: {
+            type: "simple-fill",
+            color: colors[i],
+            outline: { color: "#333", width: 0.2 },
           },
-        ],
+          label: `${Math.round(breaks[i])} - ${Math.round(breaks[i + 1])}`,
+        })),
       };
 
       districtlayer.renderer = renderer;
