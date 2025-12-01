@@ -1,0 +1,68 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>District Data</title>
+
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+    </style>
+
+    <script>
+      var esriConfig = {
+        apiKey:
+          "AAPTxy8BH1VEsoebNVZXo8HurBeGDTvUskCUb3czQMCwFWJ1UjD2_GthKrKlkZ6ixg9anK_PLHpqkWzcY7l7C-MM0ZwLmIoNa0_n16MICPnPddXstzlyjgzYP9zHnBtfVktF1sy9eDgu1vqoNBFvuFcIy6mSE_AkZamf3NyJgOFrkRFXjCkp7FlGih7wOZAAqWiLMFoh06ma4sNr1y7EPX0SDPFT2GkPrZKEAxGRz2x1y1-mUAteguWb_tLxGB70ZxxXAT1_VBJFxrLH",
+      };
+    </script>
+
+    <!-- Load Calcite components from CDN -->
+    <script
+      type="module"
+      src="https://js.arcgis.com/calcite-components/3.3.3/calcite.esm.js"
+    ></script>
+
+    <!-- Load the ArcGIS Maps SDK for JavaScript from CDN -->
+    <script src="https://js.arcgis.com/4.34/"></script>
+
+    <!-- Load Map components from CDN-->
+    <script
+      type="module"
+      src="https://js.arcgis.com/4.34/map-components/"
+    ></script>
+  </head>
+
+  <body>
+    <arcgis-map
+      basemap="arcgis/topographic"
+      center="78.96288, 20.593684"
+      zoom="5"
+    >
+      <arcgis-zoom slot="top-left"></arcgis-zoom>
+    </arcgis-map>
+
+    <script type="module">
+      const FeatureLayer = await $arcgis.import(
+        "@arcgis/core/layers/FeatureLayer.js"
+      );
+
+      const viewElement = document.querySelector("arcgis-map");
+      await viewElement.viewOnReady();
+
+      // Trailheads feature layer (points)
+      const districtlayer = new FeatureLayer({
+        url: "https://services7.arcgis.com/K0Zm1EpRXL1ZlEV1/arcgis/rest/services/Join_Features_to_districts_view/FeatureServer",
+        outFields: ["*"],
+        popupEnabled: true,
+      });
+
+      viewElement.map.add(districtlayer);
+    </script>
+  </body>
+</html>
