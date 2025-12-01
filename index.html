@@ -45,6 +45,7 @@
       zoom="5"
     >
       <arcgis-zoom slot="top-left"></arcgis-zoom>
+      <arcgis-popup></arcgis-popup>
     </arcgis-map>
 
     <script type="module">
@@ -54,12 +55,17 @@
 
       const viewElement = document.querySelector("arcgis-map");
       await viewElement.viewOnReady();
+      const popupData = {
+        title: "District Information",
+        content:
+          "<b>District:</b> {DISTRICT}<br><b>Population:</b> {total_population}<br><b>State:</b> {ST_NM}<br>",
+      };
 
       // Trailheads feature layer (points)
       const districtlayer = new FeatureLayer({
         url: "https://services7.arcgis.com/K0Zm1EpRXL1ZlEV1/arcgis/rest/services/Join_Features_to_districts_view/FeatureServer",
-        outFields: ["*"],
-        popupEnabled: true,
+        outFields: ["DISTRICT", "total_population", "ST_NM"],
+        popupTemplate: popupData,
       });
 
       viewElement.map.add(districtlayer);
