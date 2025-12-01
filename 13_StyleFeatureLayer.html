@@ -1,0 +1,187 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>
+      ArcGIS Maps SDK for JavaScript Tutorials: Style a feature layer
+    </title>
+
+    <script>
+      var esriConfig = {
+        apiKey:
+          "AAPTxy8BH1VEsoebNVZXo8HurBeGDTvUskCUb3czQMCwFWJ1UjD2_GthKrKlkZ6ixg9aN69460uBvhrQL5E9FfnOdiPhsso1VvxhS77e9WvtJlIuQelgjxojs0JXOpl8R2TS3MwYYGngqz4s5Z2-q_zcC2cNFVbv1r52nvf1v_VKkJoijVIwPy10VQr2ZkPc7Jgf1vvrURhLHx67QpuUmv0-gMmZ-vMSdLdgMFgo9eyrDClB4uLxNyVN1FLmXesQmVJfAT1_VBJFxrLH",
+      };
+    </script>
+
+    <!-- Load Calcite components from CDN -->
+    <script
+      type="module"
+      src="https://js.arcgis.com/calcite-components/3.3.3/calcite.esm.js"
+    ></script>
+
+    <!-- Load the ArcGIS Maps SDK for JavaScript from CDN -->
+    <script src="https://js.arcgis.com/4.34/"></script>
+
+    <!-- Load Map components from CDN-->
+    <script
+      type="module"
+      src="https://js.arcgis.com/4.34/map-components/"
+    ></script>
+
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+    </style>
+  </head>
+
+  <body>
+    <arcgis-map
+      basemap="arcgis/topographic"
+      center="-118.805, 34.020"
+      zoom="13"
+    >
+      <arcgis-zoom slot="top-left"></arcgis-zoom>
+    </arcgis-map>
+
+    <script type="module">
+      const FeatureLayer = await $arcgis.import(
+        "@arcgis/core/layers/FeatureLayer.js"
+      );
+
+      const viewElement = document.querySelector("arcgis-map");
+      await viewElement.viewOnReady();
+
+      // Define a simple renderer and symbol
+      const trailheadsRenderer = {
+        type: "simple",
+        symbol: {
+          type: "picture-marker",
+          url: "http://static.arcgis.com/images/Symbols/NPS/npsPictograph_0231b.png",
+          width: "18px",
+          height: "18px",
+        },
+      };
+
+      // Define a label for the trailheads
+      const trailheadsLabels = {
+        symbol: {
+          type: "text",
+          color: "#FFFFFF",
+          haloColor: "#5E8D74",
+          haloSize: "2px",
+          font: {
+            size: "12px",
+            family: "Noto Sans",
+            style: "italic",
+            weight: "normal",
+          },
+        },
+
+        labelPlacement: "above-center",
+        labelExpressionInfo: {
+          expression: "$feature.TRL_NAME",
+        },
+      };
+
+      // Create the layer and set the renderer
+      const trailheads = new FeatureLayer({
+        url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads/FeatureServer/0",
+        renderer: trailheadsRenderer,
+        labelingInfo: [trailheadsLabels],
+      });
+
+      viewElement.map.add(trailheads);
+
+      // Define a unique value renderer and symbols
+      const trailsRenderer = {
+        type: "simple",
+        symbol: {
+          color: "#BA55D3",
+          type: "simple-line",
+          style: "solid",
+        },
+
+        visualVariables: [
+          {
+            type: "size",
+            field: "ELEV_GAIN",
+            minDataValue: 0,
+            maxDataValue: 2300,
+            minSize: "3px",
+            maxSize: "7px",
+          },
+        ],
+      };
+
+      // Create the layer and set the renderer
+      const trails = new FeatureLayer({
+        url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0",
+        renderer: trailsRenderer,
+        opacity: 0.75,
+      });
+
+      viewElement.map.add(trails, 0);
+
+      // Add bikes only trails
+      const bikeTrailsRenderer = {
+        type: "simple",
+        symbol: {
+          type: "simple-line",
+          style: "short-dot",
+          color: "#EC5707",
+          width: "1px",
+        },
+      };
+
+      const bikeTrails = new FeatureLayer({
+        url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0",
+        renderer: bikeTrailsRenderer,
+        definitionExpression: "USE_BIKE = 'YES'",
+      });
+
+      viewElement.map.add(bikeTrails, 1);
+
+      // Add parks with a class breaks renderer and unique symbols
+      function createFillSymbol(value, color) {
+        return {
+          value: value,
+          symbol: {
+            color: color,
+            type: "simple-fill",
+            style: "solid",
+            outline: {
+              style: "none",
+            },
+          },
+          label: value,
+        };
+      }
+
+      const openSpacesRenderer = {
+        type: "unique-value",
+        field: "TYPE",
+        uniqueValueInfos: [
+          createFillSymbol("Natural Areas", "#9E559C"),
+          createFillSymbol("Regional Open Space", "#A7C636"),
+          createFillSymbol("Local Park", "#149ECE"),
+          createFillSymbol("Regional Recreation Park", "#ED5151"),
+        ],
+      };
+
+      // Create the layer and set the renderer
+      const openspaces = new FeatureLayer({
+        url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Parks_and_Open_Space/FeatureServer/0",
+        renderer: openSpacesRenderer,
+        opacity: 0.3,
+      });
+
+      viewElement.map.add(openspaces, 0);
+    </script>
+  </body>
+</html>

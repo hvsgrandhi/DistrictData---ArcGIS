@@ -55,10 +55,109 @@
 
       const viewElement = document.querySelector("arcgis-map");
       await viewElement.viewOnReady();
+
+      const populationRange = {
+        1: [8000, 500000],
+        2: [500001, 1500000],
+        3: [1500001, 3000000],
+        4: [3000001, 4000000],
+        5: [4000001, 5000000],
+        6: [5000001, 7000000],
+        7: [7000001, 10000000],
+        8: [10000001, 12000000],
+      };
       const popupData = {
         title: "District Information",
         content:
           "<b>District:</b> {DISTRICT}<br><b>Population:</b> {total_population}<br><b>State:</b> {ST_NM}<br>",
+      };
+
+      const renderer = {
+        type: "class-breaks",
+        field: "total_population",
+        defaultSymbol: { type: "simple-fill", color: "#cccccc" },
+        classBreakInfos: [
+          {
+            minValue: populationRange[1][0],
+            maxValue: populationRange[1][1],
+            label: "8k - 0.5M",
+            symbol: {
+              type: "simple-fill",
+              color: "#fee5d9",
+              outline: { color: "#ffffff", width: 0.5 },
+            },
+          },
+          {
+            minValue: populationRange[2][0],
+            maxValue: populationRange[2][1],
+            label: "0.5M - 1.5M",
+            symbol: {
+              type: "simple-fill",
+              color: "#fcae91",
+              outline: { color: "#ffffff", width: 0.5 },
+            },
+          },
+          {
+            minValue: populationRange[3][0],
+            maxValue: populationRange[3][1],
+            label: "1.5M - 3M",
+            symbol: {
+              type: "simple-fill",
+              color: "#fb6a4a",
+              outline: { color: "#ffffff", width: 0.5 },
+            },
+          },
+          {
+            minValue: populationRange[4][0],
+            maxValue: populationRange[4][1],
+            label: "3M - 4M",
+            symbol: {
+              type: "simple-fill",
+              color: "#de2d26",
+              outline: { color: "#ffffff", width: 0.5 },
+            },
+          },
+          {
+            minValue: populationRange[5][0],
+            maxValue: populationRange[5][1],
+            label: "4M - 5M",
+            symbol: {
+              type: "simple-fill",
+              color: "#a50f15",
+              outline: { color: "#ffffff", width: 0.5 },
+            },
+          },
+          {
+            minValue: populationRange[6][0],
+            maxValue: populationRange[6][1],
+            label: "5M - 7M",
+            symbol: {
+              type: "simple-fill",
+              color: "#67000d",
+              outline: { color: "#ffffff", width: 0.5 },
+            },
+          },
+          {
+            minValue: populationRange[7][0],
+            maxValue: populationRange[7][1],
+            label: "7M - 10M",
+            symbol: {
+              type: "simple-fill",
+              color: "#49000b",
+              outline: { color: "#ffffff", width: 0.5 },
+            },
+          },
+          {
+            minValue: populationRange[8][0],
+            maxValue: populationRange[8][1],
+            label: "10M - 12M",
+            symbol: {
+              type: "simple-fill",
+              color: "#2b0008",
+              outline: { color: "#ffffff", width: 0.5 },
+            },
+          },
+        ],
       };
 
       // Trailheads feature layer (points)
@@ -66,9 +165,76 @@
         url: "https://services7.arcgis.com/K0Zm1EpRXL1ZlEV1/arcgis/rest/services/Join_Features_to_districts_view/FeatureServer",
         outFields: ["DISTRICT", "total_population", "ST_NM"],
         popupTemplate: popupData,
+        renderer: renderer,
       });
-
       viewElement.map.add(districtlayer);
     </script>
   </body>
 </html>
+
+<!-- <div id="filterBox">
+      <b>Filter by Population</b>
+      <br />
+      <calcite-slider
+        id="popSlider"
+        min="0"
+        max="100"
+        min-value="0"
+        max-value="100"
+        range
+      ></calcite-slider>
+
+      <div style="margin-top: 5px">
+        <span id="minPopVal"></span> - <span id="maxPopVal"></span>
+      </div>
+    </div>
+
+      const statsResult = await districtlayer.queryFeatures({
+        where: "1=1",
+        outStatistics: [
+          {
+            statisticType: "min",
+            onStatisticField: "total_population",
+            outStatisticFieldName: "minPop",
+          },
+          {
+            statisticType: "max",
+            onStatisticField: "total_population",
+            outStatisticFieldName: "maxPop",
+          },
+        ],
+      });
+      const stats = statsResult.features[0].attributes;
+      const minPop = stats.minPop;
+      const maxPop = stats.maxPop;
+
+      // Update slider UI
+      const slider = document.getElementById("popSlider");
+      slider.min = minPop;
+      slider.max = maxPop;
+      slider.minValue = minPop;
+      slider.maxValue = maxPop;
+
+      document.getElementById("minPopVal").innerText = minPop.toLocaleString();
+      document.getElementById("maxPopVal").innerText = maxPop.toLocaleString();
+
+      /* ------------------------------------------------------------------
+         STEP 2: Apply filtering using layerView.filter whenever slider moves
+      ------------------------------------------------------------------ */
+      const layerView = await viewElement.view.whenLayerView(districtlayer);
+
+      slider.addEventListener("calciteSliderInput", (event) => {
+        const minVal = event.target.minValue;
+        const maxVal = event.target.maxValue;
+
+        // Update labels
+        document.getElementById("minPopVal").innerText =
+          minVal.toLocaleString();
+        document.getElementById("maxPopVal").innerText =
+          maxVal.toLocaleString();
+
+        // Apply filter
+        layerView.filter = {
+          where: `total_population >= ${minVal} AND total_population <= ${maxVal}`,
+        };
+      }); -->
