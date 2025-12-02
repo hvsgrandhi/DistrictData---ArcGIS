@@ -1,7 +1,7 @@
-// src/components/MapView.jsx
 import { useEffect, useRef } from "react";
 import chroma from "chroma-js";
 import esriConfig from "@arcgis/core/config"; // fine to import config only
+import "@arcgis/map-components/dist/components/arcgis-legend";
 
 // keep the CSS import (Vite will bundle it)
 import "@arcgis/core/assets/esri/themes/light/main.css";
@@ -9,27 +9,24 @@ import "@arcgis/core/assets/esri/themes/light/main.css";
 export default function MapViewComponent() {
     const containerRef = useRef(null);
     const viewRef = useRef(null);
+    const legendRef = useRef(null);  // Ref for the legend component
 
     useEffect(() => {
-        // 1) set API key BEFORE loading Map/MapView modules
         esriConfig.apiKey = import.meta.env.VITE_ARCGIS_API_KEY;
 
         let view;
         let map;
-        let layer; // keep reference for cleanup
-
+        let layer;
         const init = async () => {
             try {
-                // 2) dynamic import AFTER setting apiKey
                 const [{ default: EsriMap }, { default: MapView }, { default: FeatureLayer }] = await Promise.all([
                     import("@arcgis/core/Map"),
                     import("@arcgis/core/views/MapView"),
                     import("@arcgis/core/layers/FeatureLayer"),
                 ]);
 
-                // 3) create map & view
                 map = new EsriMap({
-                    basemap: "streets", // styles API basemap (requires API key)
+                    basemap: "streets",
                 });
 
                 view = new MapView({
@@ -43,7 +40,10 @@ export default function MapViewComponent() {
 
                 await view.when();
 
-                // 4) create FeatureLayer (doesn't need to be added to map to query)
+                if (legendRef.current) {
+                    legendRef.current.view = view;
+                }
+
                 layer = new FeatureLayer({
                     url:
                         "https://services7.arcgis.com/K0Zm1EpRXL1ZlEV1/arcgis/rest/services/Join_Features_to_districts_view/FeatureServer",
@@ -100,7 +100,6 @@ export default function MapViewComponent() {
         init();
 
         return () => {
-            // cleanup
             if (viewRef.current) {
                 viewRef.current.container = null;
                 viewRef.current.destroy();
@@ -109,5 +108,25 @@ export default function MapViewComponent() {
         };
     }, []);
 
-    return <div ref={containerRef} style={{ width: "100%", height: "100vh" }} />;
+    return (
+        <div
+            ref={containerRef}
+            style={{ width: "100%", height: "100vh", position: "relative" }}
+        >
+            <arcgis-legend
+                ref={legendRef}
+                style={{
+                    position: "absolute",
+                    bottom: "20px",
+                    right: "20px",
+                    zIndex: 10,
+                    background: "white",
+                    padding: "8px",
+                    borderRadius: "6px",
+                    boxShadow: "0 2px 5px rgba(0,0,0,0.3)"
+                }}
+            ></arcgis-legend>
+        </div>
+    );
+
 }
