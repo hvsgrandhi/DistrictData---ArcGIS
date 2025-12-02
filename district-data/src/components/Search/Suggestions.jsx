@@ -1,9 +1,9 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import { useDistrict } from "../../context/DistrictContext";
 import styles from "./Suggestions.module.css";
 
 export default function Suggestions() {
-    const { districtPopulationData, query = "", setQuery, setCensusCode, censusCode } = useDistrict();
+    const { districtPopulationData, query = "", setQuery, setSelectedID, selectedID } = useDistrict();
 
     const dataArray = useMemo(() => {
         if (Array.isArray(districtPopulationData)) return districtPopulationData;
@@ -71,11 +71,14 @@ export default function Suggestions() {
     const handleSelect = (d) => {
         if (!d) return;
         setQuery(d.district || "");
-        setCensusCode(d.censusCode || null);
-        console.log(censusCode)
+        setSelectedID(d.censusCode || null);
         console.log("Selected district:", d.district);
         // If you need to also set selectedDistrict in context, do that here.
     };
+    useEffect(() => {
+        console.log("SelectedID updated:", selectedID);
+    }, [selectedID]);
+
 
     const makeKey = (d, idx) => {
         if (!d) return `empty-${idx}`;

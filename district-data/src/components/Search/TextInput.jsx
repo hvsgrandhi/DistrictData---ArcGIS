@@ -36,6 +36,7 @@ export default function TextInput() {
             <div className={styles.row}>
                 <input
                     type="search"
+                    aria-label="Search for a district"
                     value={localValue}
                     placeholder="Search for a district..."
                     onChange={(e) => setLocalValue(e.target.value)}
@@ -45,6 +46,8 @@ export default function TextInput() {
                 {localValue.length > 0 && (
                     <button
                         type="button"
+                        aria-label="click"
+
                         className={styles.clearBtn}
                         onClick={handleClear}
                     >
