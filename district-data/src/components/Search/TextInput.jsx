@@ -38,7 +38,7 @@ export default function TextInput() {
                     type="search"
                     aria-label="Search for a district"
                     value={localValue}
-                    placeholder="Search for a district..."
+                    placeholder="Search for a district or a state..."
                     onChange={(e) => setLocalValue(e.target.value)}
                     className={styles.inputBox}
                 />

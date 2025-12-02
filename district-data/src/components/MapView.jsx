@@ -13,7 +13,7 @@ export default function MapViewComponent() {
     const layerRef = useRef(null);
     const highlightRef = useRef(null);
 
-    const { setDistrictPopulationData, selectedID } = useDistrict();
+    const { setDistrictPopulationData, selectedID, selectedState } = useDistrict();
 
 
     useEffect(() => {
@@ -38,11 +38,11 @@ export default function MapViewComponent() {
                     map,
                     center: [86.96288, 21.593684],
                     zoom: 4,
-                    highlightOptions: {
-                        color: [0, 0, 0, 1],
-                        haloOpacity: 0.9,
-                        fillOpacity: 0.3
-                    }
+                    // highlightOptions: {
+                    //     color: [0, 0, 0, 1],
+                    //     haloOpacity: 0.9,
+                    //     fillOpacity: 0.3
+                    // }
 
                 });
 
@@ -141,6 +141,7 @@ export default function MapViewComponent() {
                 query.returnGeometry = true;
 
                 const results = await layer.queryFeatures(query);
+                // console.log(results)
                 if (results.features.length) {
                     const feature = results.features[0];
 
@@ -154,6 +155,15 @@ export default function MapViewComponent() {
                     if (highlightRef.current) highlightRef.current.remove();
 
                     highlightRef.current = layerView.highlight(feature);
+                    // console.log("Highlighting feature:", results.features[0]);
+                    // console.log(layerView.highlight(results.features[0]));
+
+                    // layerView.highlightOptions = {
+                    //     color: "#39ff14", // Highlight color
+                    //     haloOpacity: 0.9, // Opacity of the halo
+                    //     fillOpacity: 0.2 // Opacity of the fill
+                    // };
+
 
                     const centroidPoint = feature.geometry.centroid
                         ? feature.geometry.centroid
@@ -173,6 +183,49 @@ export default function MapViewComponent() {
 
         goToDistrict();
     }, [selectedID]);
+
+    // console.log(selectedState)
+    useEffect(() => {
+        const view = viewRef.current;
+        const layer = layerRef.current;
+        if (!view || !layer || !selectedState) return;
+
+        const goToState = async () => {
+            try {
+                // 1️⃣ Only show selected state's districts
+                layer.definitionExpression = `ST_NM = '${selectedState}'`;
+
+                // 2️⃣ Query only those features (faster)
+                const query = layer.createQuery();
+                query.where = layer.definitionExpression;
+                query.outFields = ["DISTRICT", "ST_NM", "censuscode"];
+                query.returnGeometry = true;
+
+                const stRes = await layer.queryFeatures(query);
+
+                if (!stRes.features.length) return;
+
+                const centerFeature =
+                    stRes.features[Math.floor(stRes.features.length / 2)];
+
+                await view.goTo({
+                    target: centerFeature.geometry,
+                    zoom: 6
+                });
+
+
+                // if (highlightRef.current) {
+                //     highlightRef.current.remove();
+                // }
+
+
+            } catch (err) {
+                console.error("Error in goToState:", err);
+            }
+        };
+
+        goToState();
+    }, [selectedState]);
 
     return (
         <div
