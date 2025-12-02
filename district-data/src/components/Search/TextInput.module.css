@@ -1,0 +1,60 @@
+/* Floating container on top-right */
+.wrapper {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+
+  background: #ffffff;
+  padding: 10px;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+
+  display: flex;
+  width: 300px; /* slightly wider for readability */
+  box-sizing: border-box;
+}
+
+/* Row alignment for input and clear button */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+/* Search input */
+.inputBox {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #d6d6d6;
+  outline: none;
+  background: #fff;
+  font-size: 15px;
+  box-sizing: border-box;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.inputBox:focus {
+  border-color: #7aa7ff;
+  box-shadow: 0 0 0 4px rgba(122, 167, 255, 0.1);
+}
+
+/* Clear button */
+.clearBtn {
+  border: none;
+  background: #f3f4f6;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: background 0.15s ease, transform 0.06s ease;
+}
+
+.clearBtn:hover {
+  background: #e6e7ea;
+}
+.clearBtn:active {
+  transform: scale(0.98);
+}

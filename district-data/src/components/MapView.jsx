@@ -1,15 +1,18 @@
 import { useEffect, useRef } from "react";
 import chroma from "chroma-js";
-import esriConfig from "@arcgis/core/config"; // fine to import config only
+import esriConfig from "@arcgis/core/config";
 import "@arcgis/map-components/dist/components/arcgis-legend";
 
-// keep the CSS import (Vite will bundle it)
 import "@arcgis/core/assets/esri/themes/light/main.css";
+import TextInput from "./Search/TextInput";
+import { useDistrict } from "../context/DistrictContext";
+import Suggestions from "./Search/Suggestions";
 
 export default function MapViewComponent() {
     const containerRef = useRef(null);
     const viewRef = useRef(null);
-    const legendRef = useRef(null);  // Ref for the legend component
+    const legendRef = useRef(null);
+    const { setDistrictPopulationData } = useDistrict();
 
     useEffect(() => {
         esriConfig.apiKey = import.meta.env.VITE_ARCGIS_API_KEY;
@@ -33,7 +36,7 @@ export default function MapViewComponent() {
                     container: containerRef.current,
                     map,
                     center: [78.96288, 20.593684],
-                    zoom: 5,
+                    zoom: 4,
                 });
 
                 viewRef.current = view;
@@ -57,13 +60,22 @@ export default function MapViewComponent() {
 
                 const stats = await layer.queryFeatures({
                     where: "1=1",
-                    outFields: ["total_population"],
+                    outFields: ["DISTRICT", "total_population", "ST_NM", "censuscode"],
                     returnGeometry: false,
                 });
 
-                const data = stats.features
-                    .map((f) => f.attributes.total_population)
-                    .filter((v) => v != null);
+                const districtData = stats.features
+                    .map((f) => ({
+                        district: f.attributes.DISTRICT,
+                        population: f.attributes.total_population,
+                        state: f.attributes.ST_NM,
+                        censusCode: f.attributes.censuscode,
+                    }))
+                    .filter((d) => d.population != null);
+                setDistrictPopulationData(districtData);
+
+                const data = districtData.map((d) => d.population);
+
 
                 if (!data.length) {
                     console.warn("No population values found; adding layer without renderer.");
@@ -113,6 +125,8 @@ export default function MapViewComponent() {
             ref={containerRef}
             style={{ width: "100%", height: "100vh", position: "relative" }}
         >
+            <TextInput />
+            <Suggestions />
             <arcgis-legend
                 ref={legendRef}
                 style={{

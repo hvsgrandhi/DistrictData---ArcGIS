@@ -1,0 +1,82 @@
+/* Suggestions wrapper positioned under the input */
+.suggestionsWrapper {
+  position: absolute;
+  top: 76px; /* places suggestions below the TextInput wrapper (20px top + ~44px input area) */
+  right: 20px;
+  width: 300px; /* match TextInput width */
+  z-index: 1000;
+  box-sizing: border-box;
+}
+
+/* Suggestions list */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid #e2e2e2;
+  border-radius: 10px;
+  background: #ffffff;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: 0 8px 28px rgba(25, 30, 40, 0.08);
+}
+
+/* Each suggestion item */
+.item {
+  margin: 0;
+}
+
+/* Button styled as full-row selectable item */
+.itemButton {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+
+  width: 100%;
+  padding: 10px 12px;
+
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease, transform 0.04s ease;
+  border-radius: 8px;
+}
+
+.itemButton:hover,
+.itemButton:focus {
+  background: #f6f8fb;
+  outline: none;
+  transform: translateY(-1px);
+}
+
+/* District name */
+.districtName {
+  font-weight: 600;
+  font-size: 14px;
+  color: #111827;
+  display: inline-block;
+  max-width: 65%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* State + population info */
+.districtInfo {
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Empty state */
+.empty {
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #6b7280;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
