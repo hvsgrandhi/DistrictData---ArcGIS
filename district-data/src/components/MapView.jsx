@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import chroma from "chroma-js";
 import esriConfig from "@arcgis/core/config";
 import "@arcgis/map-components/dist/components/arcgis-legend";
@@ -25,7 +25,7 @@ export default function MapViewComponent() {
 
 
 
-    const { setDistrictPopulationData, selectedID, selectedState, setSelectedState } = useDistrict();
+    const { setDistrictPopulationData, selectedID, selectedState, setSelectedState, setFullData, tableSelectedRowArr, setTableSelectedRowArr, setVisibleDistricts } = useDistrict();
 
     useEffect(() => {
         esriConfig.apiKey = import.meta.env.VITE_ARCGIS_API_KEY;
@@ -56,6 +56,33 @@ export default function MapViewComponent() {
                 viewRef.current = view;
 
                 await view.when();
+                // 🔍 Watch visible districts in viewport
+                view.watch("stationary", async (isStationary) => {
+                    if (!isStationary) return; // moving → ignore
+
+                    const layer = layerRef.current;
+                    const view = viewRef.current;
+                    if (!layer || !view) return;
+                    setTableSelectedRowArr([]);
+
+                    const layerView = await view.whenLayerView(layer);
+
+                    const visible = await layerView.queryFeatures({
+                        geometry: view.extent,
+                        spatialRelationship: "intersects",
+                        returnGeometry: false,
+                        outFields: ["DISTRICT", "censuscode", "ST_NM"]
+                    });
+
+
+
+                    console.log("Visible districts (map stopped):",
+                        visible.features.map(f => f.attributes)
+                    );
+                    setVisibleDistricts(visible.features.map(f => f.attributes));
+                });
+
+
 
                 // attach legend component (React-managed element) to the view
                 if (legendRef.current) {
@@ -66,7 +93,7 @@ export default function MapViewComponent() {
                 const layer = new FeatureLayer({
                     url:
                         "https://services7.arcgis.com/K0Zm1EpRXL1ZlEV1/arcgis/rest/services/Join_Features_to_districts_view/FeatureServer",
-                    outFields: ["DISTRICT", "total_population", "ST_NM", "censuscode"],
+                    outFields: ["*"],
                     popupTemplate: {
                         title: "District Information",
                         content:
@@ -79,9 +106,12 @@ export default function MapViewComponent() {
                 // Query for population data to build renderer
                 const stats = await layer.queryFeatures({
                     where: "1=1",
-                    outFields: ["DISTRICT", "total_population", "ST_NM", "censuscode"],
+                    outFields: ["*"],
                     returnGeometry: false,
                 });
+
+                setFullData(stats);
+                console.log("Full data loaded:", stats);
 
                 if (cancelled) return;
 
@@ -238,6 +268,49 @@ export default function MapViewComponent() {
 
         goToState();
     }, [selectedState]);
+
+    useEffect(() => {
+        const view = viewRef.current;
+        const layer = layerRef.current;
+
+        if (!view || !layer) return;
+        if (!tableSelectedRowArr || tableSelectedRowArr.length === 0) {
+            // if no rows selected → clear filter
+            layer.definitionExpression = null;
+            return;
+        }
+
+        const plotDistricts = async () => {
+            try {
+                const codes = tableSelectedRowArr;
+
+                // Build SQL IN clause
+                const where = `censuscode IN (${codes.map(c => `'${c}'`).join(",")})`;
+
+                layer.definitionExpression = where;
+
+                const query = layer.createQuery();
+                query.where = where;
+                query.returnGeometry = true;
+
+                const results = await layer.queryFeatures(query);
+
+                if (!results.features.length) return;
+
+                // await view.goTo({
+                //     target: results.features.map(f => f.geometry),
+                //     zoom: 7
+                // });
+
+            } catch (err) {
+                console.error("plotDistricts error:", err);
+            }
+        };
+
+        plotDistricts();
+    }, [tableSelectedRowArr]);
+
+
 
     const resetState = () => {
         const view = viewRef.current;

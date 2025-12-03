@@ -7,12 +7,15 @@ export function DistrictProvider({ children }) {
   const [districtPopulationData, setDistrictPopulationData] = useState([]);
   const [selectedID, setSelectedID] = useState(null);
   const [selectedState, setSelectedState] = useState(null);
+  const [fullData, setFullData] = useState(null);
+  const [tableSelectedRowArr, setTableSelectedRowArr] = useState([]);
+  const [visibleDistricts, setVisibleDistricts] = useState([]);
 
 
 
   return (
     <DistrictContext.Provider
-      value={{ query, setQuery, selectedID, setSelectedID, districtPopulationData, setDistrictPopulationData, selectedState, setSelectedState }}
+      value={{ query, setQuery, selectedID, setSelectedID, districtPopulationData, setDistrictPopulationData, selectedState, setSelectedState, fullData, setFullData, tableSelectedRowArr, setTableSelectedRowArr, visibleDistricts, setVisibleDistricts }}
     >
       {children}
     </DistrictContext.Provider>
