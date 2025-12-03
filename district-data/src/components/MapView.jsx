@@ -8,6 +8,9 @@ import styles from "./MapView.module.css";
 // import "@arcgis/map-components/dist/components/arcgis-print";
 // import Portal from "@arcgis/core/portal/Portal";
 
+
+
+
 export default function MapViewComponent() {
     const wrapperRef = useRef(null); // outer wrapper (React-managed)
     const mapRef = useRef(null);     // dedicated map container for ArcGIS
@@ -18,6 +21,7 @@ export default function MapViewComponent() {
     // const printRef = useRef(null);
     // const [showLegend, setShowLegend] = useState(true);
     // const [showPrint, setShowPrint] = useState(false);
+    const [printing, setPrinting] = useState(false);
 
 
 
@@ -266,6 +270,63 @@ export default function MapViewComponent() {
         }
     };
 
+    const manualPrint = async () => {
+        const view = viewRef.current;
+        if (!view) return;
+        setPrinting(true);
+
+
+
+        const [{ default: PrintTemplate }, { default: PrintParameters }, print] =
+            await Promise.all([
+                import("@arcgis/core/rest/support/PrintTemplate"),
+                import("@arcgis/core/rest/support/PrintParameters"),
+                import("@arcgis/core/rest/print")
+            ]);
+
+        const PRINT_SERVICE_URL =
+            "https://utility.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task";
+
+        const template = new PrintTemplate({
+            format: "pdf",
+            layout: "a4-landscape",
+            layoutOptions: {
+                titleText: "District Map Export",
+                authorText: "Harshvardhan",
+                scalebarUnit: "Kilometers",
+                legendLayers: [{ layerId: layerRef.current.id }]
+            },
+            exportOptions: {
+                dpi: 300,
+                width: 2400,
+                height: 1600
+            }
+        });
+
+        const params = new PrintParameters({
+            view,
+            template
+        });
+
+        try {
+            const result = await print.execute(PRINT_SERVICE_URL, params);
+
+            // auto download
+            const link = document.createElement("a");
+            link.href = result.url;
+            link.download = "exported-map.pdf";
+            link.click();
+
+        } catch (err) {
+            console.error("Print failed:", err);
+        } finally {
+            setPrinting(false);
+        }
+
+    };
+
+
+
 
     //EXPORT MAP AS PNG 
 
@@ -346,6 +407,42 @@ export default function MapViewComponent() {
                     <button onClick={resetState}>Reset</button>
                 </div>
             )}
+            <div className={styles.export}>
+
+                <button onClick={manualPrint} >
+                    Print PDF
+                </button>
+            </div>
+
+            {printing && (
+                <div
+                    style={{
+                        position: "absolute",
+                        top: "50%",
+                        left: "50%",
+                        transform: "translate(-50%, -50%)",
+                        background: "rgba(255,255,255,0.85)",
+                        padding: "20px 30px",
+                        borderRadius: "8px",
+                        zIndex: 2000,
+                        fontSize: "18px",
+                        fontWeight: "bold",
+                        boxShadow: "0 2px 10px rgba(0,0,0,0.25)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "5px"
+                    }}
+                >
+                    Generating PDF
+                    <span className={styles.dot1}>.</span>
+                    <span className={styles.dot2}>.</span>
+                    <span className={styles.dot3}>.</span>
+                </div>
+            )}
+
+
+
+
 
             {/* EXPORT MAP AS PNG */}
             {/* <div className={styles.export} >
