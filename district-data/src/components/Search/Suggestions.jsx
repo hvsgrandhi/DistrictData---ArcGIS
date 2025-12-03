@@ -3,7 +3,7 @@ import { useDistrict } from "../../context/DistrictContext";
 import styles from "./Suggestions.module.css";
 
 export default function Suggestions() {
-    const { districtPopulationData, query = "", setQuery, setSelectedID, selectedID, setSelectedState } = useDistrict();
+    const { districtPopulationData, query = "", setQuery, setSelectedID, selectedID, setSelectedState, selectedState } = useDistrict();
 
     // Convert districtPopulationData into an array if it is not already
     const dataArray = useMemo(() => {
@@ -43,7 +43,10 @@ export default function Suggestions() {
             const name = (d.district || "").toLowerCase();
             const state = (d.state || "").toLowerCase();
 
-            // ===== 1. DISTRICT MATCHES =====
+            if (selectedState) {
+
+            }
+
             if (name.startsWith(normalized)) {
                 results.push({ d, type: "district", score: 1 });
                 continue;
@@ -53,30 +56,24 @@ export default function Suggestions() {
                 continue;
             }
 
-            // ===== 2. STATE MATCHES =====
-            if (state) uniqueStates.set(state, d.state); // capture unique state names
+            if (state) uniqueStates.set(state, d.state);
 
-            // exact state match → highest priority state
             if (state === normalized) {
-                // use score 0 (better than every district)
                 stateScores.set(state, 0);
                 continue;
             }
 
-            // prefix match (still high but below district)
             if (state.startsWith(normalized)) {
                 stateScores.set(state, Math.min(stateScores.get(state) ?? 3, 3));
                 continue;
             }
 
-            // substring match
             if (state.includes(normalized)) {
                 stateScores.set(state, Math.min(stateScores.get(state) ?? 4, 4));
                 continue;
             }
         }
 
-        // ===== Convert unique states into result rows =====
         for (const [stateLower, stateOriginal] of uniqueStates) {
             if (!stateScores.has(stateLower)) continue; // only include relevant matches
 
@@ -108,7 +105,7 @@ export default function Suggestions() {
     // Handle selecting a state
     const handleSelectState = (state) => {
         setQuery(state);
-        setSelectedID(null); // Reset district selection when a state is selected
+        setSelectedID(null);
         setSelectedState(state);
         // console.log("Selected state:", state);
     };

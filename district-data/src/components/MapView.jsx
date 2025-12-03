@@ -4,6 +4,7 @@ import esriConfig from "@arcgis/core/config";
 import "@arcgis/map-components/dist/components/arcgis-legend";
 import "@arcgis/core/assets/esri/themes/light/main.css";
 import { useDistrict } from "../context/DistrictContext";
+import styles from "./MapView.module.css";
 
 
 export default function MapViewComponent() {
@@ -13,7 +14,7 @@ export default function MapViewComponent() {
     const layerRef = useRef(null);
     const highlightRef = useRef(null);
 
-    const { setDistrictPopulationData, selectedID, selectedState } = useDistrict();
+    const { setDistrictPopulationData, selectedID, selectedState, setSelectedState, query } = useDistrict();
 
 
     useEffect(() => {
@@ -38,12 +39,6 @@ export default function MapViewComponent() {
                     map,
                     center: [86.96288, 21.593684],
                     zoom: 4,
-                    // highlightOptions: {
-                    //     color: [0, 0, 0, 1],
-                    //     haloOpacity: 0.9,
-                    //     fillOpacity: 0.3
-                    // }
-
                 });
 
                 viewRef.current = view;
@@ -201,6 +196,7 @@ export default function MapViewComponent() {
                 query.outFields = ["DISTRICT", "ST_NM", "censuscode"];
                 query.returnGeometry = true;
 
+
                 const stRes = await layer.queryFeatures(query);
 
                 if (!stRes.features.length) return;
@@ -213,10 +209,13 @@ export default function MapViewComponent() {
                     zoom: 6
                 });
 
+                if (highlightRef.current) highlightRef.current.remove();
 
-                // if (highlightRef.current) {
-                //     highlightRef.current.remove();
-                // }
+
+
+                if (highlightRef.current) {
+                    highlightRef.current.remove();
+                }
 
 
             } catch (err) {
@@ -226,6 +225,35 @@ export default function MapViewComponent() {
 
         goToState();
     }, [selectedState]);
+
+    const resetState = () => {
+        const view = viewRef.current;
+        const layer = layerRef.current;
+
+        setSelectedState(null);
+
+        if (layer) {
+            layer.definitionExpression = null;
+        }
+
+        if (highlightRef.current) {
+            try {
+                highlightRef.current.remove();
+            } catch (e) {
+                console.warn("Highlight already removed");
+            }
+            highlightRef.current = null;
+        }
+
+        // 4. Reset view ONLY if view still has a container
+        if (view && view.container) {
+            view.goTo({
+                center: [86.96288, 21.593684],
+                zoom: 4,
+            }).catch(() => { /* ignore if destroyed */ });
+        }
+    };
+
 
     return (
         <div
@@ -245,6 +273,14 @@ export default function MapViewComponent() {
                     boxShadow: "0 2px 5px rgba(0,0,0,0.3)",
                 }}
             ></arcgis-legend>
+
+            {selectedState && (
+                <div className={styles.reset}>
+                    <button onClick={resetState}>Reset</button>
+                </div>
+            )}
+
         </div>
+
     )
 }

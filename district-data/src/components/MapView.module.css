@@ -1,0 +1,28 @@
+.reset {
+  position: absolute;
+  top: 100px;
+  left: 20px;
+  z-index: 20;
+}
+
+.reset button {
+  background: #fff;
+  color: #333;
+  border: 1px solid #ccc;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+  transition: all 0.2s ease;
+}
+
+.reset button:hover {
+  background: #f2f2f2;
+  box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3);
+}
+
+.reset button:active {
+  background: #e6e6e6;
+  transform: scale(0.97);
+}
