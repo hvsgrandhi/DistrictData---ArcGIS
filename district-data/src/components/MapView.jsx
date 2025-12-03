@@ -25,7 +25,8 @@ export default function MapViewComponent() {
 
 
 
-    const { setDistrictPopulationData, selectedID, selectedState, setSelectedState, setFullData, tableSelectedRowArr, setTableSelectedRowArr, setVisibleDistricts } = useDistrict();
+    const { setDistrictPopulationData, selectedID, selectedState, setSelectedState, setFullData, tableSelectedRowArr, setTableSelectedRowArr, setVisibleDistricts, setClearRows, visibleDistricts } = useDistrict();
+
 
     useEffect(() => {
         esriConfig.apiKey = import.meta.env.VITE_ARCGIS_API_KEY;
@@ -58,12 +59,11 @@ export default function MapViewComponent() {
                 await view.when();
                 // 🔍 Watch visible districts in viewport
                 view.watch("stationary", async (isStationary) => {
-                    if (!isStationary) return; // moving → ignore
+                    if (!isStationary) return;
 
                     const layer = layerRef.current;
                     const view = viewRef.current;
                     if (!layer || !view) return;
-                    setTableSelectedRowArr([]);
 
                     const layerView = await view.whenLayerView(layer);
 
@@ -74,13 +74,11 @@ export default function MapViewComponent() {
                         outFields: ["DISTRICT", "censuscode", "ST_NM"]
                     });
 
-
-
-                    console.log("Visible districts (map stopped):",
-                        visible.features.map(f => f.attributes)
-                    );
                     setVisibleDistricts(visible.features.map(f => f.attributes));
                 });
+
+
+
 
 
 
@@ -91,6 +89,7 @@ export default function MapViewComponent() {
                 }
 
                 const layer = new FeatureLayer({
+                    id: "districtLayer",
                     url:
                         "https://services7.arcgis.com/K0Zm1EpRXL1ZlEV1/arcgis/rest/services/Join_Features_to_districts_view/FeatureServer",
                     outFields: ["*"],
@@ -178,6 +177,11 @@ export default function MapViewComponent() {
             highlightRef.current = null;
         };
     }, [setDistrictPopulationData]);
+    // useEffect(() => {
+    //     // When visible districts change, clear selection safely
+    //     setTableSelectedRowArr([]);
+    //     setClearRows(prev => !prev);
+    // }, [visibleDistricts]);
 
     // fly & highlight district when selectedID changes
     useEffect(() => {
@@ -269,47 +273,78 @@ export default function MapViewComponent() {
         goToState();
     }, [selectedState]);
 
+    // useEffect(() => {
+    //     const view = viewRef.current;
+    //     const layer = layerRef.current;
+
+    //     if (!view || !layer) return;
+    //     if (!tableSelectedRowArr || tableSelectedRowArr.length === 0) {
+    //         // if no rows selected → clear filter
+    //         layer.definitionExpression = null;
+    //         return;
+    //     }
+
+    //     const plotDistricts = async () => {
+    //         try {
+    //             const codes = tableSelectedRowArr;
+
+    //             // Build SQL IN clause
+    //             const where = `censuscode IN (${codes.map(c => `'${c}'`).join(",")})`;
+
+    //             layer.definitionExpression = where;
+
+    //             const query = layer.createQuery();
+    //             query.where = where;
+    //             query.returnGeometry = true;
+
+    //             const results = await layer.queryFeatures(query);
+
+    //             if (!results.features.length) return;
+
+    //             // await view.goTo({
+    //             //     target: results.features.map(f => f.geometry),
+    //             //     zoom: 7
+    //             // });
+
+    //         } catch (err) {
+    //             console.error("plotDistricts error:", err);
+    //         }
+    //     };
+
+    //     plotDistricts();
+    // }, [tableSelectedRowArr]);
+
+
     useEffect(() => {
         const view = viewRef.current;
         const layer = layerRef.current;
-
         if (!view || !layer) return;
-        if (!tableSelectedRowArr || tableSelectedRowArr.length === 0) {
-            // if no rows selected → clear filter
-            layer.definitionExpression = null;
-            return;
-        }
 
-        const plotDistricts = async () => {
-            try {
-                const codes = tableSelectedRowArr;
+        const buildExpression = () => {
+            const safeState = selectedState
+                ? String(selectedState).replace(/'/g, "''")
+                : null;
 
-                // Build SQL IN clause
-                const where = `censuscode IN (${codes.map(c => `'${c}'`).join(",")})`;
+            const stateExpr = safeState ? `ST_NM = '${safeState}'` : null;
 
-                layer.definitionExpression = where;
+            const codes = (tableSelectedRowArr || []).map(c => String(c));
 
-                const query = layer.createQuery();
-                query.where = where;
-                query.returnGeometry = true;
+            const codesExpr = codes.length
+                ? `censuscode IN (${codes
+                    .map(code =>
+                        /^\d+$/.test(code)
+                            ? code
+                            : `'${code.replace(/'/g, "''")}'`
+                    )
+                    .join(",")})`
+                : null;
 
-                const results = await layer.queryFeatures(query);
-
-                if (!results.features.length) return;
-
-                // await view.goTo({
-                //     target: results.features.map(f => f.geometry),
-                //     zoom: 7
-                // });
-
-            } catch (err) {
-                console.error("plotDistricts error:", err);
-            }
+            if (stateExpr && codesExpr) return `${stateExpr} AND ${codesExpr}`;
+            return stateExpr || codesExpr || null;
         };
 
-        plotDistricts();
-    }, [tableSelectedRowArr]);
-
+        layer.definitionExpression = buildExpression();
+    }, [tableSelectedRowArr, selectedState]);
 
 
     const resetState = () => {
@@ -367,7 +402,7 @@ export default function MapViewComponent() {
                 titleText: "District Map Export",
                 authorText: "Harshvardhan",
                 scalebarUnit: "Kilometers",
-                legendLayers: [{ layerId: layerRef.current.id }]
+                legendLayers: [{ layerId: "districtLayer" }]
             },
             exportOptions: {
                 dpi: 300,

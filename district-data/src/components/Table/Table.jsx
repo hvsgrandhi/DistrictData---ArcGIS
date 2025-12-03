@@ -1,41 +1,63 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import DataTable from "react-data-table-component";
 import { useDistrict } from "../../context/DistrictContext";
-import { FiChevronUp, FiChevronDown } from "react-icons/fi"; // npm i react-icons
+import { FiChevronUp, FiChevronDown } from "react-icons/fi";
 
 export default function Table() {
-    const { fullData, visibleDistricts, selectedState, setTableSelectedRowArr } = useDistrict();
+    const {
+        fullData,
+        visibleDistricts,
+        selectedState,
+        tableSelectedRowArr,
+        setTableSelectedRowArr,
+        clearRows,
+        setClearRows
+    } = useDistrict();
+
     const [isOpen, setIsOpen] = useState(false);
 
-    // Build rows
+    // ❗ Clear selection whenever visible districts change
+    useEffect(() => {
+        setTableSelectedRowArr([]);
+        setClearRows(prev => !prev);
+    }, [visibleDistricts]);
+
     const fullDistrictData = useMemo(() => {
         if (!fullData?.features) return [];
 
-        const visibleCodes = visibleDistricts?.map(v => v.censuscode) || [];
+        const visibleCodes = (visibleDistricts || []).map(v => String(v.censuscode ?? ""));
 
         let rows = fullData.features.map(f => ({
             district: f.attributes.DISTRICT,
             totalPopulation: f.attributes.total_population,
             state: f.attributes.ST_NM,
-            censusCode: f.attributes.censuscode,
+            censusCode: String(f.attributes.censuscode ?? ""),
             female: f.attributes.females,
             male: f.attributes.males,
             households: f.attributes.number_of_households,
             populationPerSqKm: f.attributes.population_per_sq__km_,
             type: f.attributes.type,
         }));
+        const columns = [
+            { name: "District", selector: row => row.district, sortable: true },
+            { name: "State", selector: row => row.state, sortable: true },
+            { name: "Population", selector: row => row.totalPopulation, sortable: true },
+            { name: "CensusCode", selector: row => row.censusCode, sortable: true },
+            { name: "Male", selector: row => row.male },
+            { name: "Female", selector: row => row.female },
+            { name: "Households", selector: row => row.households },
+            { name: "Pop/SqKm", selector: row => row.populationPerSqKm },
+            { name: "Type", selector: row => row.type },
+        ];
 
-        // Filter by selected state
         if (selectedState) {
             return rows.filter(r => r.state === selectedState);
         }
 
-        // Filter by visible districts
         return rows.filter(
             row => visibleCodes.length === 0 || visibleCodes.includes(row.censusCode)
         );
     }, [fullData, visibleDistricts, selectedState]);
-
     const columns = [
         { name: "District", selector: row => row.district, sortable: true },
         { name: "State", selector: row => row.state, sortable: true },
@@ -50,7 +72,9 @@ export default function Table() {
 
     const handleChange = (state) => {
         if (state.selectedRows.length > 0) {
-            setTableSelectedRowArr(state.selectedRows.map(r => r.censusCode));
+            setTableSelectedRowArr(
+                state.selectedRows.map(r => r.censusCode)
+            );
         } else {
             setTableSelectedRowArr([]);
         }
@@ -58,7 +82,7 @@ export default function Table() {
 
     return (
         <>
-            {/* Expand / Collapse Button */}
+            {/* Expand/Collapse button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 style={{
@@ -83,7 +107,7 @@ export default function Table() {
                 {isOpen ? <FiChevronDown /> : <FiChevronUp />}
             </button>
 
-            {/* Slide Panel */}
+            {/* Table panel */}
             <div
                 style={{
                     position: "absolute",
@@ -115,11 +139,11 @@ export default function Table() {
                     <DataTable
                         columns={columns}
                         data={fullDistrictData}
-                        pagination
                         highlightOnHover
-                        selectableRows
                         striped
                         dense
+                        selectableRows
+                        clearSelectedRows={clearRows} // ⭐ table clears correctly
                         onSelectedRowsChange={handleChange}
                         progressPending={!fullData}
                     />

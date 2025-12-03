@@ -10,12 +10,14 @@ export function DistrictProvider({ children }) {
   const [fullData, setFullData] = useState(null);
   const [tableSelectedRowArr, setTableSelectedRowArr] = useState([]);
   const [visibleDistricts, setVisibleDistricts] = useState([]);
+  const [clearRows, setClearRows] = useState(false);
+
 
 
 
   return (
     <DistrictContext.Provider
-      value={{ query, setQuery, selectedID, setSelectedID, districtPopulationData, setDistrictPopulationData, selectedState, setSelectedState, fullData, setFullData, tableSelectedRowArr, setTableSelectedRowArr, visibleDistricts, setVisibleDistricts }}
+      value={{ query, setQuery, selectedID, setSelectedID, districtPopulationData, setDistrictPopulationData, selectedState, setSelectedState, fullData, setFullData, tableSelectedRowArr, setTableSelectedRowArr, visibleDistricts, setVisibleDistricts, clearRows, setClearRows }}
     >
       {children}
     </DistrictContext.Provider>
