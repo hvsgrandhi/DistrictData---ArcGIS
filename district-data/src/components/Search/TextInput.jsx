@@ -3,7 +3,7 @@ import { useDistrict } from "../../context/DistrictContext";
 import styles from "./TextInput.module.css";
 
 export default function TextInput() {
-    const { query, setQuery } = useDistrict();
+    const { query, setQuery, selectedState, setSelectedState } = useDistrict();
     const [localValue, setLocalValue] = useState(query || "");
     const timerRef = useRef(null);
 
@@ -31,14 +31,17 @@ export default function TextInput() {
         setQuery("");
     };
 
+    const placeholderText = selectedState
+        ? `Search in ${selectedState}...`
+        : "Search for a district or a state...";
+
     return (
         <div className={styles.wrapper}>
             <div className={styles.row}>
                 <input
-                    type="search"
                     aria-label="Search for a district"
                     value={localValue}
-                    placeholder="Search for a district or a state..."
+                    placeholder={placeholderText}
                     onChange={(e) => setLocalValue(e.target.value)}
                     className={styles.inputBox}
                 />
@@ -46,14 +49,25 @@ export default function TextInput() {
                 {localValue.length > 0 && (
                     <button
                         type="button"
-                        aria-label="click"
-
+                        aria-label="clear search"
                         className={styles.clearBtn}
                         onClick={handleClear}
                     >
                         ✕
                     </button>
                 )}
+
+                {/* {selectedState && (
+                    <button
+                        type="button"
+                        aria-label={`clear selected state ${selectedState}`}
+                        className={styles.clearStateBtn}
+                        onClick={handleClearState}
+                        title={`Clear selected state (${selectedState})`}
+                    >
+                        {selectedState} ✕
+                    </button>
+                )} */}
             </div>
         </div>
     );

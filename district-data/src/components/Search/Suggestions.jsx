@@ -1,11 +1,18 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo } from "react";
 import { useDistrict } from "../../context/DistrictContext";
 import styles from "./Suggestions.module.css";
 
 export default function Suggestions() {
-    const { districtPopulationData, query = "", setQuery, setSelectedID, selectedID, setSelectedState, selectedState } = useDistrict();
+    const {
+        districtPopulationData,
+        query = "",
+        setQuery,
+        setSelectedID,
+        selectedID,
+        setSelectedState,
+        selectedState,
+    } = useDistrict();
 
-    // Convert districtPopulationData into an array if it is not already
     const dataArray = useMemo(() => {
         if (Array.isArray(districtPopulationData)) return districtPopulationData;
         if (districtPopulationData && typeof districtPopulationData === "object") {
@@ -20,78 +27,89 @@ export default function Suggestions() {
 
     const normalized = (query || "").trim().toLowerCase();
 
-    // Sort districts by population (for top 5)
+    const dataForSuggestions = useMemo(() => {
+        if (!selectedState) return dataArray;
+        const selectedLower = String(selectedState).toLowerCase();
+        return dataArray.filter((d) => (d?.state || "").toLowerCase() === selectedLower);
+    }, [dataArray, selectedState]);
+
     const popular = useMemo(
         () =>
-            [...dataArray]
+            [...dataForSuggestions]
                 .sort((a, b) => (b?.population || 0) - (a?.population || 0))
                 .slice(0, 5),
-        [dataArray]
+        [dataForSuggestions]
     );
 
-    // Filter results based on the query
     const filtered = useMemo(() => {
         if (!normalized) return [];
 
         const results = [];
-        const stateScores = new Map(); // store score for states
-        const uniqueStates = new Map(); // ensure unique state entries
+        if (selectedState) {
+            for (const d of dataForSuggestions) {
+                if (!d) continue;
+                const name = (d.district || "").toLowerCase();
 
-        for (const d of dataArray) {
-            if (!d) continue;
+                if (name.startsWith(normalized)) {
+                    results.push({ d, type: "district", score: 1 });
+                    continue;
+                }
+                if (name.includes(normalized)) {
+                    results.push({ d, type: "district", score: 2 });
+                    continue;
+                }
+            }
+        } else {
+            const stateScores = new Map(); // store score for states
+            const uniqueStates = new Map(); // ensure unique state entries
 
-            const name = (d.district || "").toLowerCase();
-            const state = (d.state || "").toLowerCase();
+            for (const d of dataArray) {
+                if (!d) continue;
 
-            if (selectedState) {
+                const name = (d.district || "").toLowerCase();
+                const state = (d.state || "").toLowerCase();
 
+                if (name.startsWith(normalized)) {
+                    results.push({ d, type: "district", score: 1 });
+                    continue;
+                }
+                if (name.includes(normalized)) {
+                    results.push({ d, type: "district", score: 2 });
+                    continue;
+                }
+
+                if (state) uniqueStates.set(state, d.state);
+
+                if (state === normalized) {
+                    stateScores.set(state, 0);
+                    continue;
+                }
+                if (state.startsWith(normalized)) {
+                    stateScores.set(state, Math.min(stateScores.get(state) ?? 3, 3));
+                    continue;
+                }
+                if (state.includes(normalized)) {
+                    stateScores.set(state, Math.min(stateScores.get(state) ?? 4, 4));
+                    continue;
+                }
             }
 
-            if (name.startsWith(normalized)) {
-                results.push({ d, type: "district", score: 1 });
-                continue;
-            }
-            if (name.includes(normalized)) {
-                results.push({ d, type: "district", score: 2 });
-                continue;
-            }
+            for (const [stateLower, stateOriginal] of uniqueStates) {
+                if (!stateScores.has(stateLower)) continue; // only include relevant matches
 
-            if (state) uniqueStates.set(state, d.state);
-
-            if (state === normalized) {
-                stateScores.set(state, 0);
-                continue;
-            }
-
-            if (state.startsWith(normalized)) {
-                stateScores.set(state, Math.min(stateScores.get(state) ?? 3, 3));
-                continue;
-            }
-
-            if (state.includes(normalized)) {
-                stateScores.set(state, Math.min(stateScores.get(state) ?? 4, 4));
-                continue;
+                results.push({
+                    d: { district: null, state: stateOriginal, population: 0 },
+                    type: "state",
+                    score: stateScores.get(stateLower),
+                });
             }
         }
 
-        for (const [stateLower, stateOriginal] of uniqueStates) {
-            if (!stateScores.has(stateLower)) continue; // only include relevant matches
-
-            results.push({
-                d: { district: null, state: stateOriginal, population: 0 },
-                type: "state",
-                score: stateScores.get(stateLower),
-            });
-        }
-
-        // ===== Sort final results =====
         results.sort((a, b) => a.score - b.score);
 
-        // Return only district/state objects (top 5)
         return results.map((r) => r.d).slice(0, 5);
-    }, [dataArray, normalized]);
+    }, [dataArray, dataForSuggestions, normalized, selectedState]);
 
-    // Suggestions to show (popular or filtered based on query)
     const suggestionsToShow = normalized === "" ? popular : filtered;
 
     // Handle selecting a district
@@ -99,7 +117,6 @@ export default function Suggestions() {
         if (!d) return;
         setQuery(d.district || "");
         setSelectedID(d.censusCode || null);
-        // console.log("Selected district:", d.district);
     };
 
     // Handle selecting a state
@@ -107,7 +124,7 @@ export default function Suggestions() {
         setQuery(state);
         setSelectedID(null);
         setSelectedState(state);
-        // console.log("Selected state:", state);
+        setQuery(null)
     };
 
     const makeKey = (d, idx) => {
@@ -127,7 +144,7 @@ export default function Suggestions() {
                     </li>
                 ) : (
                     suggestionsToShow.map((d, idx) => {
-                        const isState = !d.district; // state object we created
+                        const isState = !d.district; // state object we created (district null)
 
                         return (
                             <li key={makeKey(d, idx)} className={styles.item}>
@@ -164,7 +181,6 @@ export default function Suggestions() {
                     })
                 )}
             </ul>
-
         </div>
     );
 }

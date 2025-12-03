@@ -1,25 +1,32 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import chroma from "chroma-js";
 import esriConfig from "@arcgis/core/config";
 import "@arcgis/map-components/dist/components/arcgis-legend";
 import "@arcgis/core/assets/esri/themes/light/main.css";
 import { useDistrict } from "../context/DistrictContext";
 import styles from "./MapView.module.css";
-
+// import "@arcgis/map-components/dist/components/arcgis-print";
+// import Portal from "@arcgis/core/portal/Portal";
 
 export default function MapViewComponent() {
-    const containerRef = useRef(null);
+    const wrapperRef = useRef(null); // outer wrapper (React-managed)
+    const mapRef = useRef(null);     // dedicated map container for ArcGIS
     const viewRef = useRef(null);
     const legendRef = useRef(null);
     const layerRef = useRef(null);
     const highlightRef = useRef(null);
+    // const printRef = useRef(null);
+    // const [showLegend, setShowLegend] = useState(true);
+    // const [showPrint, setShowPrint] = useState(false);
 
-    const { setDistrictPopulationData, selectedID, selectedState, setSelectedState, query } = useDistrict();
 
+
+    const { setDistrictPopulationData, selectedID, selectedState, setSelectedState } = useDistrict();
 
     useEffect(() => {
         esriConfig.apiKey = import.meta.env.VITE_ARCGIS_API_KEY;
 
+        let cancelled = false;
         let view;
         let map;
 
@@ -32,12 +39,13 @@ export default function MapViewComponent() {
                         import("@arcgis/core/layers/FeatureLayer"),
                     ]);
 
+                // create map + view and attach to a dedicated map DOM node (mapRef.current)
                 map = new EsriMap({ basemap: "streets" });
 
                 view = new MapView({
-                    container: containerRef.current,
+                    container: mapRef.current,
                     map,
-                    center: [86.96288, 21.593684],
+                    center: [80.96288, 21.593684],
                     zoom: 4,
                 });
 
@@ -45,7 +53,9 @@ export default function MapViewComponent() {
 
                 await view.when();
 
+                // attach legend component (React-managed element) to the view
                 if (legendRef.current) {
+                    // for the web component, assign view
                     legendRef.current.view = view;
                 }
 
@@ -68,6 +78,8 @@ export default function MapViewComponent() {
                     outFields: ["DISTRICT", "total_population", "ST_NM", "censuscode"],
                     returnGeometry: false,
                 });
+
+                if (cancelled) return;
 
                 const districtData = stats.features
                     .map((f) => ({
@@ -108,6 +120,7 @@ export default function MapViewComponent() {
 
                 map.add(layer);
             } catch (err) {
+                // more informative logging
                 console.error("ArcGIS init error:", err);
             }
         };
@@ -115,14 +128,24 @@ export default function MapViewComponent() {
         init();
 
         return () => {
+            cancelled = true;
+            // proper cleanup of view
             if (viewRef.current) {
-                viewRef.current.container = null;
-                viewRef.current.destroy();
-                viewRef.current = null;
+                try {
+                    viewRef.current.container = null;
+                    viewRef.current.destroy();
+                } catch (e) {
+                    console.warn("Error destroying view:", e);
+                } finally {
+                    viewRef.current = null;
+                }
             }
+            layerRef.current = null;
+            highlightRef.current = null;
         };
-    }, []);
+    }, [setDistrictPopulationData]);
 
+    // fly & highlight district when selectedID changes
     useEffect(() => {
         const view = viewRef.current;
         const layer = layerRef.current;
@@ -132,33 +155,28 @@ export default function MapViewComponent() {
         const goToDistrict = async () => {
             try {
                 const query = layer.createQuery();
+                // assume censusCode is numeric or safe; if string, consider escaping
                 query.where = `censuscode = '${selectedID}'`;
                 query.returnGeometry = true;
 
                 const results = await layer.queryFeatures(query);
-                // console.log(results)
                 if (results.features.length) {
                     const feature = results.features[0];
 
-                    view.goTo({
+                    await view.goTo({
                         target: feature.geometry,
                         zoom: 8,
                     });
 
                     const layerView = await view.whenLayerView(layer);
 
-                    if (highlightRef.current) highlightRef.current.remove();
+                    // remove existing highlight
+                    if (highlightRef.current) {
+                        try { highlightRef.current.remove(); } catch { }
+                        highlightRef.current = null;
+                    }
 
                     highlightRef.current = layerView.highlight(feature);
-                    // console.log("Highlighting feature:", results.features[0]);
-                    // console.log(layerView.highlight(results.features[0]));
-
-                    // layerView.highlightOptions = {
-                    //     color: "#39ff14", // Highlight color
-                    //     haloOpacity: 0.9, // Opacity of the halo
-                    //     fillOpacity: 0.2 // Opacity of the fill
-                    // };
-
 
                     const centroidPoint = feature.geometry.centroid
                         ? feature.geometry.centroid
@@ -167,7 +185,7 @@ export default function MapViewComponent() {
                     view.openPopup({
                         features: [feature],
                         location: centroidPoint,
-
+                        autoCloseEnabled: true,
                     });
                 }
             } catch (err) {
@@ -175,11 +193,9 @@ export default function MapViewComponent() {
             }
         };
 
-
         goToDistrict();
     }, [selectedID]);
 
-    // console.log(selectedState)
     useEffect(() => {
         const view = viewRef.current;
         const layer = layerRef.current;
@@ -187,37 +203,30 @@ export default function MapViewComponent() {
 
         const goToState = async () => {
             try {
-                // 1️⃣ Only show selected state's districts
-                layer.definitionExpression = `ST_NM = '${selectedState}'`;
+                const safeState = String(selectedState).replace(/'/g, "''");
+                layer.definitionExpression = `ST_NM = '${safeState}'`;
 
-                // 2️⃣ Query only those features (faster)
                 const query = layer.createQuery();
                 query.where = layer.definitionExpression;
                 query.outFields = ["DISTRICT", "ST_NM", "censuscode"];
                 query.returnGeometry = true;
 
-
                 const stRes = await layer.queryFeatures(query);
 
                 if (!stRes.features.length) return;
 
-                const centerFeature =
-                    stRes.features[Math.floor(stRes.features.length / 2)];
+                const centerFeature = stRes.features[Math.floor(stRes.features.length / 2)];
 
                 await view.goTo({
                     target: centerFeature.geometry,
-                    zoom: 6
+                    zoom: 6,
                 });
 
-                if (highlightRef.current) highlightRef.current.remove();
-
-
-
+                // remove highlight if present
                 if (highlightRef.current) {
-                    highlightRef.current.remove();
+                    try { highlightRef.current.remove(); } catch { }
+                    highlightRef.current = null;
                 }
-
-
             } catch (err) {
                 console.error("Error in goToState:", err);
             }
@@ -245,21 +254,64 @@ export default function MapViewComponent() {
             highlightRef.current = null;
         }
 
-        // 4. Reset view ONLY if view still has a container
         if (view && view.container) {
-            view.goTo({
-                center: [86.96288, 21.593684],
-                zoom: 4,
-            }).catch(() => { /* ignore if destroyed */ });
+            view
+                .goTo({
+                    center: [80.96288, 21.593684],
+                    zoom: 4,
+                })
+                .catch(() => {
+                    /* ignore if destroyed */
+                });
         }
     };
 
 
+    //EXPORT MAP AS PNG 
+
+    // const exportPng = async () => {
+    //     const view = viewRef.current;
+    //     if (!view) return;
+
+    //     try {
+    //         const screenshot = await view.takeScreenshot({
+    //             width: Math.max(1200, view.width || 1200),
+    //             height: Math.max(800, view.height || 800),
+    //             format: "png",
+    //         });
+
+    //         const link = document.createElement("a");
+    //         link.href = screenshot.dataUrl || screenshot.data;
+    //         link.download = "map-export.png";
+    //         link.click();
+    //     } catch (err) {
+    //         console.error("Screenshot export failed:", err);
+    //     }
+    // };
+
+    //EXPORT MAP AS PNG USING PRINT WIDGET
+
+    // useEffect(() => {
+    //     if (!viewRef.current || !printRef.current) return;
+
+    //     const portal = new Portal({
+    //         url: "https://user.maps.arcgis.com/sharing",
+    //         authMode: "immediate",
+    //         authorizedCrossOriginDomains: ["https://user.maps.arcgis.com"],
+    //     });
+
+    //     printRef.current.view = viewRef.current;
+    //     printRef.current.portal = portal;
+
+    // }, [viewRef.current]);
+
     return (
         <div
-            ref={containerRef}
+            ref={wrapperRef}
             style={{ width: "100%", height: "100vh", position: "relative" }}
         >
+            <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
+
             <arcgis-legend
                 ref={legendRef}
                 style={{
@@ -272,15 +324,35 @@ export default function MapViewComponent() {
                     borderRadius: "6px",
                     boxShadow: "0 2px 5px rgba(0,0,0,0.3)",
                 }}
-            ></arcgis-legend>
+            />
+
+            {/* EXPORT MAP USING PRINT WIDGET */}
+            {/* <arcgis-print
+                ref={printRef}
+                style={{
+                    position: "absolute",
+                    bottom: "20px",
+                    left: "20px",
+                    zIndex: 20,
+                    background: "white",
+                    borderRadius: "6px",
+                }}
+            ></arcgis-print> */}
+
+
 
             {selectedState && (
-                <div className={styles.reset}>
+                <div className={styles.reset} >
                     <button onClick={resetState}>Reset</button>
                 </div>
             )}
 
+            {/* EXPORT MAP AS PNG */}
+            {/* <div className={styles.export} >
+                <button onClick={exportPng} className={styles.exportBtn}>
+                    Export Map
+                </button>
+            </div> */}
         </div>
-
-    )
+    );
 }
